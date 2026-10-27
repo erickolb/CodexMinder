@@ -34,7 +34,6 @@ public sealed class Widget : Form
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
         DoubleBuffered = true;
-        BackColor = Color.FromArgb(30, 30, 32);
         ForeColor = Color.FromArgb(235, 235, 238);
         AccessibleName = "CodexMinder remaining Codex usage";
         Text = "CodexMinder";
@@ -57,7 +56,7 @@ public sealed class Widget : Form
     }
 
     protected override bool ShowWithoutActivation => true;
-    protected override CreateParams CreateParams { get { var p = base.CreateParams; if (!preview) p.ExStyle |= 0x08000000 | 0x80; return p; } }
+    protected override CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x00080000; if (!preview) p.ExStyle |= 0x08000000 | 0x80; return p; } }
 
     async Task TickAsync()
     {
@@ -69,6 +68,7 @@ public sealed class Widget : Form
             nextPlacement = DateTimeOffset.Now.AddSeconds(15);
         }
         if (!Screen.AllScreens.Any(s => s.Bounds.IntersectsWith(Bounds))) Place(reset: true);
+        RenderWidget();
         if (demo) { usage = new(new(80, DateTimeOffset.Now.AddHours(2)), new(88, DateTimeOffset.Now.AddDays(4))); status = "Demo data"; }
         else if (active && !refreshing && DateTimeOffset.Now >= nextRefresh)
         {
@@ -86,7 +86,7 @@ public sealed class Widget : Form
         AccessibleDescription = description;
         var trayText = active ? $"CodexMinder: {usage?.Text ?? "unavailable"}" : "CodexMinder: apps closed";
         tray.Text = trayText[..Math.Min(63, trayText.Length)];
-        Invalidate();
+        RenderWidget();
     }
 
     static bool IsClientRunning()
@@ -127,25 +127,40 @@ public sealed class Widget : Form
         else { var area = Screen.PrimaryScreen!.WorkingArea; Location = new(area.Right - Width - 12, area.Bottom - Height - 8); }
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    protected override void OnPaintBackground(PaintEventArgs e) { }
+    protected override void OnPaint(PaintEventArgs e) => RenderWidget();
+
+    void RenderWidget()
     {
-        base.OnPaint(e);
+        if (!IsHandleCreated || IsDisposed || Width <= 0 || Height <= 0) return;
+        bool light = false;
+        using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+            light = key?.GetValue("SystemUsesLightTheme") is int value && value != 0;
+        ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : light ? Color.FromArgb(28, 28, 30) : Color.FromArgb(235, 235, 238);
+        using var bitmap = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        using var graphics = Graphics.FromImage(bitmap);
+        // One alpha step keeps the full rectangle draggable/right-clickable while
+        // allowing the actual taskbar material beneath it to remain visible.
+        graphics.Clear(Color.FromArgb(1, 0, 0, 0));
+        graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
         var color = active && usage?.Low == true ? Color.FromArgb(213, 153, 87) : ForeColor;
         using var numbers = new Font("Segoe UI", settings.Stacked ? 10 : 11, FontStyle.Regular);
-        var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
-        if (!active) OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(9, 9, Width - 18, Height - 18));
+        using var brush = new SolidBrush(color);
+        using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        if (!active) OpenAiLogo.Draw(graphics, blossom, new Rectangle(9, 9, Width - 18, Height - 18), ForeColor);
         else if (settings.Stacked)
         {
             var split = Height * 45 / 100;
-            OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(0, 2, Width, split - 3));
-            TextRenderer.DrawText(e.Graphics, usage?.Text ?? "— / —", numbers, new Rectangle(0, split, Width, Height - split), color, flags);
+            OpenAiLogo.Draw(graphics, blossom, new Rectangle(0, 2, Width, split - 3), ForeColor);
+            graphics.DrawString(usage?.Text ?? "— / —", numbers, brush, new RectangleF(0, split, Width, Height - split), format);
         }
         else
         {
             var split = Height;
-            OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(8, 8, split - 16, Height - 16));
-            TextRenderer.DrawText(e.Graphics, usage?.Text ?? "— / —", numbers, new Rectangle(split, 0, Width - split, Height), color, flags);
+            OpenAiLogo.Draw(graphics, blossom, new Rectangle(8, 8, split - 16, Height - 16), ForeColor);
+            graphics.DrawString(usage?.Text ?? "— / —", numbers, brush, new RectangleF(split, 0, Width - split, Height), format);
         }
+        LayeredSurface.Present(Handle, bitmap, Location);
     }
 
     void ShowMenu(Point point)

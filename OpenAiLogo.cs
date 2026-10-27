@@ -36,7 +36,7 @@ internal static class OpenAiLogo
         return path;
     }
 
-    public static void Draw(Graphics graphics, GraphicsPath path, Rectangle box)
+    public static void Draw(Graphics graphics, GraphicsPath path, Rectangle box, Color? color = null)
     {
         var bounds = path.GetBounds();
         var size = Math.Min(box.Width, box.Height);
@@ -48,6 +48,7 @@ internal static class OpenAiLogo
         using var copy = (GraphicsPath)path.Clone();
         copy.Transform(transform);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.FillPath(Brushes.White, copy);
+        using var brush = new SolidBrush(color ?? Color.White);
+        graphics.FillPath(brush, copy);
     }
 }

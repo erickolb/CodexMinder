@@ -16,6 +16,8 @@ The widget refreshes usage once per minute while either desktop app is running, 
 
 ### Taskbar placement
 
+The background is transparent: the taskbar's actual color, tint, and transparency show through, rather than a simulated solid panel. The logo and normal text follow Windows' system light/dark theme, updating within three seconds. Text and logo edges use alpha blending; the full widget area remains draggable and right-clickable.
+
 This is an independent, topmost, non-activating window positioned **over** the taskbar, not an Explorer extension. Automatic placement reads the taskbar's accessible controls and chooses a free gap, checking again every 15 seconds as buttons change. If no suitable gap is available, it sits just above the taskbar rather than covering buttons. Dragging sets a fixed position; **Reset position** restores automatic placement. It does not reserve taskbar space. It can also be placed elsewhere on the desktop and stays visible with taskbar auto-hide. Automatic placement uses the primary taskbar; drag to another monitor if desired. The tray icon can restore it and supplies the same context menu.
 
 The display and tray use OpenAI's Blossom mark to identify the service being monitored. The original SVG is retained in `Assets/Blossom_Light.svg`; the widget renders its filled logo path without the construction guides. Source: [OpenAI design guidelines](https://openai.com/brand/) and its [official SVG asset](https://images.ctfassets.net/kftzwdyauwt9/3hUGLn3ypllZ0oa01qOYVq/28e8188e6f11b84c3e876569d492734f/Blossom_Light.svg). OpenAI owns the mark. CodexMinder is an independent companion and is not endorsed by OpenAI.
