@@ -4,6 +4,8 @@ A small Windows desktop companion displaying **remaining Codex allowances** over
 
 The OpenAI Blossom logo sits above the five-hour and weekly percentages (for example, `78% / 87%`), with an optional single-line layout.
 
+The stacked layout occupies a 44 × 44 square at 100% display scaling. Its compact percentage line uses a 6.5-point font (slightly reduced when needed to fit `100%/100%`). The logo-only state has the same square footprint. Dimensions scale with Windows DPI settings. The optional inline layout remains wider.
+
 The first percentage is the five-hour allowance; the second is weekly. This is Codex subscription usage, not all ChatGPT model limits or API billing.
 
 ## Use

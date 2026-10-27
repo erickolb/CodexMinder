@@ -111,7 +111,7 @@ public sealed class Widget : Form
     void ResizeWidget()
     {
         var scale = DeviceDpi / 96f;
-        Size = new((int)((active ? settings.Stacked ? 108 : 144 : 40) * scale), (int)(44 * scale));
+        Size = new((int)((active && !settings.Stacked ? 144 : 44) * scale), (int)(44 * scale));
     }
 
     void Place(bool reset = false)
@@ -120,7 +120,7 @@ public sealed class Widget : Form
         var taskbar = FindWindow("Shell_TrayWnd", null);
         if (taskbar != IntPtr.Zero && GetWindowRect(taskbar, out var rect))
         {
-            var gap = TaskbarPlacement.FindGap(taskbar, Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), new Size((int)(144 * DeviceDpi / 96f), Height));
+            var gap = TaskbarPlacement.FindGap(taskbar, Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), Size);
             // Fall back just above the bar if it has no readable free space.
             Location = gap ?? new Point(rect.Right - Width - 12, rect.Top - Height - 4);
         }
@@ -136,21 +136,29 @@ public sealed class Widget : Form
         bool light = SystemTheme.IsLight;
         ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : light ? Color.FromArgb(28, 28, 30) : Color.FromArgb(235, 235, 238);
         using var bitmap = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        bitmap.SetResolution(DeviceDpi, DeviceDpi);
         using var graphics = Graphics.FromImage(bitmap);
         // One alpha step keeps the full rectangle draggable/right-clickable while
         // allowing the actual taskbar material beneath it to remain visible.
         graphics.Clear(Color.FromArgb(1, 0, 0, 0));
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
         var color = active && usage?.Low == true ? Color.FromArgb(213, 153, 87) : ForeColor;
-        using var numbers = new Font("Segoe UI", settings.Stacked ? 10 : 11, FontStyle.Regular);
         using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        var text = usage?.Text ?? "— / —";
+        if (settings.Stacked) text = text.Replace(" / ", "/");
+        using var preferredFont = new Font("Segoe UI", settings.Stacked ? 6.5f : 11, FontStyle.Regular);
+        var measured = graphics.MeasureString(text, preferredFont, int.MaxValue, format).Width;
+        var available = Width - 2 * DeviceDpi / 96f;
+        // Keep even 100%/100% on one line within the square, at any display scale.
+        using var numbers = new Font("Segoe UI", preferredFont.Size * (settings.Stacked ? Math.Min(1, available / measured) : 1), FontStyle.Regular);
+        format.FormatFlags |= StringFormatFlags.NoWrap;
         if (!active) OpenAiLogo.Draw(graphics, blossom, new Rectangle(9, 9, Width - 18, Height - 18), ForeColor);
         else if (settings.Stacked)
         {
-            var split = Height * 45 / 100;
+            var split = Height * 65 / 100;
             OpenAiLogo.Draw(graphics, blossom, new Rectangle(0, 2, Width, split - 3), ForeColor);
-            graphics.DrawString(usage?.Text ?? "— / —", numbers, brush, new RectangleF(0, split, Width, Height - split), format);
+            graphics.DrawString(text, numbers, brush, new RectangleF(0, split, Width, Height - split), format);
         }
         else
         {
