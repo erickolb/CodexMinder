@@ -12,6 +12,8 @@ public sealed class Widget : Form
     readonly NotifyIcon tray;
     readonly ToolTip tooltip = new();
     readonly System.Drawing.Drawing2D.GraphicsPath blossom = OpenAiLogo.Load();
+    Icon? trayArtwork;
+    (TrayStatus Status, bool Light, int Size)? trayAppearance;
     readonly bool demo;
     readonly bool preview;
     readonly string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexMinder", "settings.json");
@@ -46,7 +48,9 @@ public sealed class Widget : Form
             Icon = (Icon)temporaryIcon.Clone();
             DestroyIcon(iconHandle);
         }
-        tray = new NotifyIcon { Icon = Icon, Visible = true, Text = "CodexMinder" };
+        tray = new NotifyIcon { Text = "CodexMinder" };
+        UpdateTrayIcon();
+        tray.Visible = true;
         tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); else { TopMost = true; Show(); BringToFront(); } };
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { dragging = true; moved = false; dragStart = e.Location; dragOrigin = Location; Capture = true; } };
         MouseMove += (_, _) =>
@@ -93,7 +97,20 @@ public sealed class Widget : Form
         AccessibleDescription = description;
         var trayText = active ? $"CodexMinder: {usage?.Text ?? "unavailable"}" : "CodexMinder: apps closed";
         tray.Text = trayText[..Math.Min(63, trayText.Length)];
+        UpdateTrayIcon();
         RenderWidget();
+    }
+
+    void UpdateTrayIcon()
+    {
+        var appearance = (TrayArtwork.StatusFor(usage), SystemTheme.IsLight, Math.Max(16, (int)Math.Round(16 * DeviceDpi / 96f)));
+        if (trayAppearance == appearance) return;
+        var replacement = TrayArtwork.Create(blossom, appearance.Item1, appearance.Item2, appearance.Item3);
+        var previous = trayArtwork;
+        tray.Icon = replacement;
+        trayArtwork = replacement;
+        trayAppearance = appearance;
+        previous?.Dispose();
     }
 
     static bool IsClientRunning()
@@ -273,7 +290,7 @@ public sealed class Widget : Form
     void Save() { Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!); File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings)); }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { lifetime.Cancel(); timer.Dispose(); tray.Dispose(); tooltip.Dispose(); blossom.Dispose(); Icon?.Dispose(); }
+        if (disposing) { lifetime.Cancel(); timer.Dispose(); tray.Dispose(); trayArtwork?.Dispose(); tooltip.Dispose(); blossom.Dispose(); Icon?.Dispose(); }
         base.Dispose(disposing);
     }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string className, string? title);

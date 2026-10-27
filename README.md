@@ -28,6 +28,8 @@ The installer offers startup as a checkbox; portable first launch enables it by 
 
 When ChatGPT or the Codex desktop application is running (including minimized), the percentages appear. When both are closed, only the logo appears. Each percentage independently turns yellow below 50% remaining, orange below 33%, and red below 10%, with strict boundaries (50% is normal, 33% is yellow, 10% is orange). The slash and unaffected percentage retain the normal theme color. Yellow and red adjust for light/dark theme readability. There are no notifications or sounds.
 
+The system tray icon has a small overlapping **%** badge to distinguish it from ChatGPT. The badge is green normally, yellow/orange/red for the most urgent known allowance, and mild blue only when neither allowance is known. One known allowance is enough to report a definitive color. Refresh errors retain the last known status. The widget's blossom is unchanged; only the tray icon has the badge. Tray artwork follows system light/dark theme and display scaling.
+
 The widget refreshes usage once per minute while either desktop app is running, checks process state every three seconds, and retries failed requests after 30 seconds. Refreshes and connection errors keep the last successful percentages on screen to avoid flicker; the context menu reports when it is showing last known values and the last successful refresh time. Dashes appear only before the first successful lookup or for an allowance the account does not report.
 
 ### Taskbar placement

@@ -51,6 +51,34 @@ Check(new Usage(null, null).Level == UsageLevel.Normal, "Unknown allowances do n
 var independent = new Usage(new(46, null), new(82, null));
 Check(independent.FiveHour!.Level == UsageLevel.Yellow && independent.Weekly!.Level == UsageLevel.Normal, "46% is yellow while 82% stays normal");
 
+Check(TrayArtwork.StatusFor(null) == TrayStatus.Unknown && TrayArtwork.StatusFor(new(null, null)) == TrayStatus.Unknown, "Tray is blue only when both allowances are unknown");
+foreach (var (remaining, expected) in new[] { (82d, TrayStatus.Green), (46d, TrayStatus.Yellow), (22d, TrayStatus.Orange), (5d, TrayStatus.Red) })
+{
+    Check(TrayArtwork.StatusFor(new(new(remaining, null), null)) == expected, $"Known five-hour {remaining}% determines tray status with unknown weekly");
+    Check(TrayArtwork.StatusFor(new(null, new(remaining, null))) == expected, $"Known weekly {remaining}% determines tray status with unknown five-hour");
+}
+Check(TrayArtwork.StatusFor(new(new(46, null), new(82, null))) == TrayStatus.Yellow, "46% / 82% gives yellow badge");
+Check(TrayArtwork.StatusFor(new(new(46, null), new(5, null))) == TrayStatus.Red, "Red takes priority over yellow for tray badge");
+using (var logo = OpenAiLogo.Load())
+foreach (var light in new[] { false, true })
+foreach (var size in new[] { 16, 24, 40 })
+foreach (var state in Enum.GetValues<TrayStatus>())
+{
+    using var bitmap = TrayArtwork.Render(logo, state, light, size);
+    Check(bitmap.GetPixel(0, 0).A == 0, $"Transparent tray corner at {size}px, {state}, light={light}");
+    var color = TrayArtwork.BadgeColor(state, light);
+    bool colored = false;
+    for (int y = (int)(size * .45); y < size; y++)
+    for (int x = (int)(size * .45); x < size; x++)
+    {
+        var pixel = bitmap.GetPixel(x, y);
+        if (pixel.A > 50 && Math.Abs(pixel.R - color.R) < 8 && Math.Abs(pixel.G - color.G) < 8 && Math.Abs(pixel.B - color.B) < 8) colored = true;
+    }
+    Check(colored, $"Visible colored percent at {size}px, {state}, light={light}");
+    using var icon = TrayArtwork.Create(logo, state, light, size);
+    Check(icon.Width == size && icon.Height == size, $"Native tray icon size {size}px, {state}, light={light}");
+}
+
 static class Native
 {
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string name, string? title);
