@@ -2,6 +2,20 @@
 
 A small Windows desktop companion displaying **remaining Codex allowances** over your taskbar:
 
+## Install
+
+Download the **Windows installer** or **portable ZIP** from [the latest release](https://github.com/erickolb/CodexMinder/releases/latest). The app includes its runtime; no .NET SDK or administrator access is required. Codex must already be installed and signed in with your ChatGPT subscription account. Current release binaries are unsigned.
+
+See [installation, updates, uninstall, and agent setup](docs/INSTALL.md). You can also ask your agent: “Install and set up CodexMinder from https://github.com/erickolb/CodexMinder using the latest release and enable startup.”
+
+## AI disclosure and license
+
+CodexMinder was developed by Eric Kolb **with the assistance of OpenAI**, using Codex for implementation, testing, documentation, and packaging. It is an independent project and is not affiliated with or endorsed by OpenAI.
+
+Source code is available under the [MIT License](LICENSE). The OpenAI logo and bundled third-party components retain their respective terms; see [third-party notices](THIRD-PARTY-NOTICES.md).
+
+## Display
+
 The OpenAI Blossom logo sits above the five-hour and weekly percentages (for example, `78% / 87%`), with an optional single-line layout.
 
 The stacked layout occupies a 44 × 44 square at 100% display scaling. Its compact percentage line uses a 6.5-point font (slightly reduced when needed to fit `100%/100%`). The logo-only state has the same square footprint. Dimensions scale with Windows DPI settings. The optional inline layout remains wider.
@@ -10,7 +24,7 @@ The first percentage is the five-hour allowance; the second is weekly. This is C
 
 ## Use
 
-Run `CodexMinder.exe` from a permanent folder. On first launch it enables startup for your current Windows user. Right-click the display to change that setting, see reset times in your local timezone, refresh, switch between stacked and inline layouts, or exit. Drag the display to unused taskbar space; its position is saved. Double-click opens ChatGPT.
+The installer offers startup as a checkbox; portable first launch enables it by default. Run portable copies from a permanent folder. Right-click the display to change startup, see reset times in your local timezone, refresh, switch between stacked and inline layouts, or exit. Drag the display to unused taskbar space; its position is saved. Double-click opens ChatGPT.
 
 When ChatGPT or the Codex desktop application is running (including minimized), the percentages appear. When both are closed, only the logo appears. Each percentage independently turns yellow below 50% remaining, orange below 33%, and red below 10%, with strict boundaries (50% is normal, 33% is yellow, 10% is orange). The slash and unaffected percentage retain the normal theme color. Yellow and red adjust for light/dark theme readability. There are no notifications or sounds.
 
@@ -51,4 +65,4 @@ dotnet publish CodexMinder.csproj -c Release -r win-x64 --self-contained true -p
 
 `--live` performs a real read-only account lookup. The other tests use fixtures and need no account or network. `CodexMinder.exe --demo` shows 80% / 88% without accessing your account or enabling startup.
 
-GitHub Actions builds, runs fixture tests, and uploads a standalone Windows ZIP on pushes and pull requests.
+GitHub Actions builds, runs fixture tests, and packages a standalone Windows ZIP, per-user installer, and SHA-256 manifest on pushes and pull requests. Version tags produce draft GitHub Releases for review. See [release maintenance](docs/RELEASING.md).

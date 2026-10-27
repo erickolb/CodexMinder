@@ -59,7 +59,7 @@ public sealed class Widget : Form
         MouseUp += (_, e) => { if (dragging) { dragging = false; Capture = false; if (moved) { settings.X = Left; settings.Y = Top; Save(); } } if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); };
         MouseDoubleClick += (_, _) => OpenChatGpt();
         timer.Tick += async (_, _) => await TickAsync();
-        Shown += async (_, _) => { ResizeWidget(); Place(); if (!settings.StartupConfigured && !demo) { try { SetStartup(true); settings.StartupConfigured = true; Save(); } catch (Exception e) { status = e.Message; } } timer.Start(); await TickAsync(); };
+        Shown += async (_, _) => { ResizeWidget(); Place(); if (!settings.StartupConfigured && !demo) { try { if (!File.Exists(Path.Combine(AppContext.BaseDirectory, "installed.marker"))) SetStartup(true); settings.StartupConfigured = true; Save(); } catch (Exception e) { status = e.Message; } } timer.Start(); await TickAsync(); };
     }
 
     protected override bool ShowWithoutActivation => true;
