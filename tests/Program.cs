@@ -37,6 +37,17 @@ Check(clamped.Text == "0% / 100%", "Out-of-range percentages clamp");
 var preferred = Parse("""{"rateLimits":{"primary":{"usedPercent":99,"windowDurationMins":300}},"rateLimitsByLimitId":{"codex":{"primary":{"usedPercent":20,"windowDurationMins":300}}}}""");
 Check(preferred.FiveHour?.Remaining == 80, "Explicit Codex bucket takes precedence");
 
+foreach (var (remaining, expected) in new[] {
+    (100d, UsageLevel.Normal), (50d, UsageLevel.Normal), (49.9, UsageLevel.Yellow),
+    (33d, UsageLevel.Yellow), (32.9, UsageLevel.Orange), (10d, UsageLevel.Orange),
+    (9.9, UsageLevel.Red), (0d, UsageLevel.Red) })
+{
+    Check(new Usage(new(remaining, null), new(100, null)).Level == expected, $"Five-hour threshold at {remaining}%");
+    Check(new Usage(new(100, null), new(remaining, null)).Level == expected, $"Weekly threshold at {remaining}%");
+}
+Check(new Usage(new(49, null), new(9, null)).Level == UsageLevel.Red, "Most urgent allowance determines color");
+Check(new Usage(null, null).Level == UsageLevel.Normal, "Unknown allowances do not trigger warning colors");
+
 static class Native
 {
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string name, string? title);

@@ -3,8 +3,17 @@ using System.Text.Json;
 namespace CodexMinder;
 
 public record Quota(double Remaining, DateTimeOffset? Reset);
+public enum UsageLevel { Normal, Yellow, Orange, Red }
 public record Usage(Quota? FiveHour, Quota? Weekly)
 {
+    public UsageLevel Level
+    {
+        get
+        {
+            var remaining = Math.Min(FiveHour?.Remaining ?? 100, Weekly?.Remaining ?? 100);
+            return remaining < 10 ? UsageLevel.Red : remaining < 33 ? UsageLevel.Orange : remaining < 50 ? UsageLevel.Yellow : UsageLevel.Normal;
+        }
+    }
     public bool Low => FiveHour?.Remaining < 33 || Weekly?.Remaining < 33;
     public string Text => $"{Format(FiveHour)} / {Format(Weekly)}";
     static string Format(Quota? q) => q is null ? "—" : $"{Math.Floor(q.Remaining):0}%";

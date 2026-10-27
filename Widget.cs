@@ -149,7 +149,13 @@ public sealed class Widget : Form
         // allowing the actual taskbar material beneath it to remain visible.
         graphics.Clear(Color.FromArgb(1, 0, 0, 0));
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        var color = active && usage?.Low == true ? Color.FromArgb(213, 153, 87) : ForeColor;
+        var color = (active ? usage?.Level : UsageLevel.Normal) switch
+        {
+            UsageLevel.Yellow => light ? Color.FromArgb(145, 110, 12) : Color.FromArgb(220, 193, 92),
+            UsageLevel.Orange => Color.FromArgb(213, 153, 87),
+            UsageLevel.Red => light ? Color.FromArgb(186, 45, 45) : Color.FromArgb(230, 106, 106),
+            _ => ForeColor
+        };
         using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         var text = usage?.Text ?? "— / —";
