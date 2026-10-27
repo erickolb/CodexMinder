@@ -91,7 +91,7 @@ public sealed class Widget : Form
         }
         if (IsDisposed) return;
         // Explorer can raise the taskbar above topmost windows after a click/restart.
-        SetWindowPos(Handle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        RestoreOverlay();
         var description = active ? $"5-hour / weekly remaining: {usage?.Text ?? "— / —"}\n{status}" : "ChatGPT and Codex are closed. Right-click to open ChatGPT.";
         tooltip.SetToolTip(this, description);
         AccessibleDescription = description;
@@ -99,6 +99,22 @@ public sealed class Widget : Form
         tray.Text = trayText[..Math.Min(63, trayText.Length)];
         UpdateTrayIcon();
         RenderWidget();
+    }
+
+    void RestoreOverlay()
+    {
+        if (IsDisposed || !IsHandleCreated || !Visible) return;
+        SetWindowPos(Handle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+    }
+
+    protected override void OnDeactivate(EventArgs e)
+    {
+        base.OnDeactivate(e);
+        // Explorer can raise its topmost taskbar when an outside click dismisses
+        // our menu. Reassert ordering after the focus transition, without taking
+        // focus back from the window the user clicked.
+        RestoreOverlay();
+        if (!IsDisposed && IsHandleCreated) BeginInvoke(() => RestoreOverlay());
     }
 
     void UpdateTrayIcon()
@@ -235,7 +251,15 @@ public sealed class Widget : Form
         menu.Items.Add(startup);
         menu.Items.Add("Reset position (drag to move)", null, (_, _) => { settings.X = settings.Y = null; Save(); Place(true); });
         menu.Items.Add("Exit", null, (_, _) => Close());
-        menu.Closed += (_, _) => { if (!IsDisposed && IsHandleCreated) BeginInvoke(() => menu.Dispose()); };
+        menu.Closed += (_, _) =>
+        {
+            RestoreOverlay();
+            if (!IsDisposed && IsHandleCreated) BeginInvoke(() =>
+            {
+                menu.Dispose();
+                RestoreOverlay();
+            });
+        };
         // A non-activating overlay must explicitly foreground itself for standard
         // popup-menu outside-click dismissal (the same rule as tray menus).
         SetForegroundWindow(Handle);
