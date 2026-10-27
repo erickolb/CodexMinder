@@ -1,5 +1,16 @@
 using System.Text.Json;
 using CodexMinder;
+using System.Runtime.InteropServices;
+
+if (args.Contains("--placement"))
+{
+    Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+    var taskbar = Native.FindWindow("Shell_TrayWnd", null);
+    Native.GetWindowRect(taskbar, out var r);
+    Console.WriteLine($"Taskbar {r.Left}, {r.Top}, {r.Right}, {r.Bottom}");
+    Console.WriteLine(TaskbarPlacement.FindGap(taskbar, Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom), new Size(44,44), Console.WriteLine));
+    return;
+}
 
 if (args.Contains("--live"))
 {
@@ -25,3 +36,10 @@ var clamped = Parse("""{"rateLimits":{"primary":{"usedPercent":120,"windowDurati
 Check(clamped.Text == "0% / 100%", "Out-of-range percentages clamp");
 var preferred = Parse("""{"rateLimits":{"primary":{"usedPercent":99,"windowDurationMins":300}},"rateLimitsByLimitId":{"codex":{"primary":{"usedPercent":20,"windowDurationMins":300}}}}""");
 Check(preferred.FiveHour?.Remaining == 80, "Explicit Codex bucket takes precedence");
+
+static class Native
+{
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr FindWindow(string name, string? title);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
+    [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+}

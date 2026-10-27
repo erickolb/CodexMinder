@@ -14,13 +14,15 @@ Run `CodexMinder.exe` from a permanent folder. On first launch it enables startu
 
 When ChatGPT or the Codex desktop application is running (including minimized), the percentages appear. When both are closed, only the logo appears. The percentages turn muted orange when either remaining allowance is strictly below 33%. There are no notifications or sounds.
 
-The widget refreshes usage once per minute while either desktop app is running, checks process state every three seconds, and retries failed requests after 30 seconds. Missing windows or failed requests show dashes rather than invented or stale percentages. The context menu shows connection status and the last successful refresh time.
+The widget refreshes usage once per minute while either desktop app is running, checks process state every three seconds, and retries failed requests after 30 seconds. Refreshes and connection errors keep the last successful percentages on screen to avoid flicker; the context menu reports when it is showing last known values and the last successful refresh time. Dashes appear only before the first successful lookup or for an allowance the account does not report.
 
 ### Taskbar placement
 
 The background is transparent: the taskbar's actual color, tint, and transparency show through, rather than a simulated solid panel. The logo and normal text follow Windows' system light/dark theme, updating within three seconds. Text and logo edges use alpha blending; the full widget area remains draggable and right-clickable.
 
 The context menu follows the system light/dark theme each time it opens, with flat backgrounds, rounded hover highlights, themed checkmarks, and readable status text. Windows 11 supplies rounded popup corners where supported. High contrast uses Windows' system menu renderer and colors. This is a styled WinForms popup, not a WinUI menu.
+
+Only an actual drag saves a fixed position; ordinary clicks leave automatic placement enabled. To clear an older saved position, choose **Reset position** or start with `--reset-position` after exiting the running instance. Taskbar bounds diagnostics are available via `dotnet run --project tests/CodexMinder.Tests.csproj -- --placement`.
 
 This is an independent, topmost, non-activating window positioned **over** the taskbar, not an Explorer extension. Automatic placement reads the taskbar's accessible controls and chooses a free gap, checking again every 15 seconds as buttons change. If no suitable gap is available, it sits just above the taskbar rather than covering buttons. Dragging sets a fixed position; **Reset position** restores automatic placement. It does not reserve taskbar space. It can also be placed elsewhere on the desktop and stays visible with taskbar auto-hide. Automatic placement uses the primary taskbar; drag to another monitor if desired. The tray icon can restore it and supplies the same context menu.
 

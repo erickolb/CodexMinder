@@ -4,7 +4,7 @@ namespace CodexMinder;
 
 internal static class TaskbarPlacement
 {
-    public static Point? FindGap(IntPtr taskbar, Rectangle bar, Size widget)
+    public static Point? FindGap(IntPtr taskbar, Rectangle bar, Size widget, Action<string>? trace = null)
     {
         if (bar.Width < bar.Height) return null;
         try
@@ -16,11 +16,13 @@ internal static class TaskbarPlacement
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem),
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)));
+            trace?.Invoke($"Controls: {controls.Count}");
             foreach (AutomationElement element in controls)
             {
                 var r = element.Current.BoundingRectangle;
                 if (element.Current.IsOffscreen || r.IsEmpty || r.Width <= 0 || r.Height <= 0 || r.Width >= bar.Width * .9) continue;
                 if (r.Bottom <= bar.Top || r.Top >= bar.Bottom) continue;
+                trace?.Invoke($"{element.Current.ControlType.ProgrammaticName}: {element.Current.Name} [{r.Left}, {r.Top}, {r.Width}, {r.Height}]");
                 occupied.Add(((int)r.Left - 8, (int)r.Right + 8));
             }
             // If accessibility is unavailable, don't guess and cover someone's buttons.
@@ -36,6 +38,6 @@ internal static class TaskbarPlacement
             var gap = gaps.Where(g => g.End - g.Start >= widget.Width + 16).OrderByDescending(g => g.Start).FirstOrDefault();
             return gap == default ? null : new Point(gap.End - widget.Width - 8, bar.Top + Math.Max(0, (bar.Height - widget.Height) / 2));
         }
-        catch (Exception) { return null; }
+        catch (Exception error) { trace?.Invoke(error.ToString()); return null; }
     }
 }

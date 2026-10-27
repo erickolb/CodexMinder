@@ -21,14 +21,15 @@ public sealed class Widget : Form
     DateTimeOffset nextRefresh = DateTimeOffset.MinValue;
     DateTimeOffset nextPlacement = DateTimeOffset.MinValue;
     DateTimeOffset? lastRefresh;
-    bool active, refreshing, dragging;
-    Point dragStart;
+    bool active, refreshing, dragging, moved;
+    Point dragStart, dragOrigin;
 
-    public Widget(bool demo, bool preview = false)
+    public Widget(bool demo, bool preview = false, bool resetPosition = false)
     {
         this.demo = demo;
         this.preview = preview;
         try { settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(settingsPath)) ?? new(); } catch { }
+        if (resetPosition) { settings.X = settings.Y = null; Save(); }
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = preview;
         TopMost = true;
@@ -47,9 +48,15 @@ public sealed class Widget : Form
         }
         tray = new NotifyIcon { Icon = Icon, Visible = true, Text = "CodexMinder" };
         tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); else { TopMost = true; Show(); BringToFront(); } };
-        MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { dragging = true; dragStart = e.Location; Capture = true; } };
-        MouseMove += (_, _) => { if (dragging) { var p = Cursor.Position; Location = new(p.X - dragStart.X, p.Y - dragStart.Y); } };
-        MouseUp += (_, e) => { if (dragging) { dragging = false; Capture = false; settings.X = Left; settings.Y = Top; Save(); } if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); };
+        MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { dragging = true; moved = false; dragStart = e.Location; dragOrigin = Location; Capture = true; } };
+        MouseMove += (_, _) =>
+        {
+            if (!dragging) return;
+            var p = Cursor.Position;
+            moved |= Math.Abs(p.X - dragOrigin.X - dragStart.X) >= SystemInformation.DragSize.Width / 2 || Math.Abs(p.Y - dragOrigin.Y - dragStart.Y) >= SystemInformation.DragSize.Height / 2;
+            if (moved) Location = new(p.X - dragStart.X, p.Y - dragStart.Y);
+        };
+        MouseUp += (_, e) => { if (dragging) { dragging = false; Capture = false; if (moved) { settings.X = Left; settings.Y = Top; Save(); } } if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); };
         MouseDoubleClick += (_, _) => OpenChatGpt();
         timer.Tick += async (_, _) => await TickAsync();
         Shown += async (_, _) => { ResizeWidget(); Place(); if (!settings.StartupConfigured && !demo) { try { SetStartup(true); settings.StartupConfigured = true; Save(); } catch (Exception e) { status = e.Message; } } timer.Start(); await TickAsync(); };
@@ -74,7 +81,7 @@ public sealed class Widget : Form
         {
             refreshing = true;
             try { usage = await CodexClient.ReadAsync(lifetime.Token); lastRefresh = DateTimeOffset.Now; status = "Connected"; nextRefresh = DateTimeOffset.Now.AddMinutes(1); }
-            catch (Exception e) when (!lifetime.IsCancellationRequested) { usage = null; status = e is OperationCanceledException ? "Usage request timed out; retrying" : e.Message; nextRefresh = DateTimeOffset.Now.AddSeconds(30); }
+            catch (Exception e) when (!lifetime.IsCancellationRequested) { status = (usage is null ? "" : "Showing last known values · ") + (e is OperationCanceledException ? "Usage request timed out; retrying" : e.Message); nextRefresh = DateTimeOffset.Now.AddSeconds(30); }
             catch (OperationCanceledException) { }
             finally { refreshing = false; }
         }

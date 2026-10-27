@@ -8,6 +8,6 @@ internal static class Program
         using var mutex = new Mutex(true, "Local\\CodexMinder", out var first);
         if (!first) return;
         ApplicationConfiguration.Initialize();
-        Application.Run(new Widget(args.Contains("--demo"), args.Contains("--preview")));
+        Application.Run(new Widget(args.Contains("--demo"), args.Contains("--preview"), args.Contains("--reset-position")));
     }
 }
