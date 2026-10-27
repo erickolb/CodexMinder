@@ -2,10 +2,7 @@
 
 A small Windows desktop companion displaying **remaining Codex allowances** over your taskbar:
 
-```text
-     Ø
-78% / 87%
-```
+The OpenAI Blossom logo sits above the five-hour and weekly percentages (for example, `78% / 87%`), with an optional single-line layout.
 
 The first percentage is the five-hour allowance; the second is weekly. This is Codex subscription usage, not all ChatGPT model limits or API billing.
 
@@ -13,15 +10,15 @@ The first percentage is the five-hour allowance; the second is weekly. This is C
 
 Run `CodexMinder.exe` from a permanent folder. On first launch it enables startup for your current Windows user. Right-click the display to change that setting, see reset times in your local timezone, refresh, switch between stacked and inline layouts, or exit. Drag the display to unused taskbar space; its position is saved. Double-click opens ChatGPT.
 
-When ChatGPT or the Codex desktop application is running (including minimized), the percentages appear. When both are closed, only Ø appears. The percentages turn muted orange when either remaining allowance is strictly below 33%. There are no notifications or sounds.
+When ChatGPT or the Codex desktop application is running (including minimized), the percentages appear. When both are closed, only the logo appears. The percentages turn muted orange when either remaining allowance is strictly below 33%. There are no notifications or sounds.
 
 The widget refreshes usage once per minute while either desktop app is running, checks process state every three seconds, and retries failed requests after 30 seconds. Missing windows or failed requests show dashes rather than invented or stale percentages. The context menu shows connection status and the last successful refresh time.
 
 ### Taskbar placement
 
-This is an independent, topmost, non-activating window positioned **over** the taskbar, not an Explorer extension. It does not reserve taskbar space: drag it clear of your existing buttons. It can also be placed elsewhere on the desktop. It stays visible with taskbar auto-hide. The default location is on the primary taskbar; drag to another monitor if desired. The tray icon can restore it and supplies the same context menu. Use **Reset position** if your monitor layout changes.
+This is an independent, topmost, non-activating window positioned **over** the taskbar, not an Explorer extension. Automatic placement reads the taskbar's accessible controls and chooses a free gap, checking again every 15 seconds as buttons change. If no suitable gap is available, it sits just above the taskbar rather than covering buttons. Dragging sets a fixed position; **Reset position** restores automatic placement. It does not reserve taskbar space. It can also be placed elsewhere on the desktop and stays visible with taskbar auto-hide. Automatic placement uses the primary taskbar; drag to another monitor if desired. The tray icon can restore it and supplies the same context menu.
 
-The Ø mark is the requested placeholder, not an official OpenAI logo. The tray uses a Windows information icon in this first version.
+The display and tray use OpenAI's Blossom mark to identify the service being monitored. The original SVG is retained in `Assets/Blossom_Light.svg`; the widget renders its filled logo path without the construction guides. Source: [OpenAI design guidelines](https://openai.com/brand/) and its [official SVG asset](https://images.ctfassets.net/kftzwdyauwt9/3hUGLn3ypllZ0oa01qOYVq/28e8188e6f11b84c3e876569d492734f/Blossom_Light.svg). OpenAI owns the mark. CodexMinder is an independent companion and is not endorsed by OpenAI.
 
 ## Authentication
 

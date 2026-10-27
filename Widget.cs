@@ -11,6 +11,7 @@ public sealed class Widget : Form
     readonly CancellationTokenSource lifetime = new();
     readonly NotifyIcon tray;
     readonly ToolTip tooltip = new();
+    readonly System.Drawing.Drawing2D.GraphicsPath blossom = OpenAiLogo.Load();
     readonly bool demo;
     readonly bool preview;
     readonly string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexMinder", "settings.json");
@@ -18,6 +19,7 @@ public sealed class Widget : Form
     Usage? usage;
     string status = "Waiting for usage…";
     DateTimeOffset nextRefresh = DateTimeOffset.MinValue;
+    DateTimeOffset nextPlacement = DateTimeOffset.MinValue;
     DateTimeOffset? lastRefresh;
     bool active, refreshing, dragging;
     Point dragStart;
@@ -36,7 +38,14 @@ public sealed class Widget : Form
         ForeColor = Color.FromArgb(235, 235, 238);
         AccessibleName = "CodexMinder remaining Codex usage";
         Text = "CodexMinder";
-        Icon = SystemIcons.Information;
+        using (var bitmap = new Bitmap(32, 32))
+        {
+            using (var graphics = Graphics.FromImage(bitmap)) OpenAiLogo.Draw(graphics, blossom, new Rectangle(2, 2, 28, 28));
+            var iconHandle = bitmap.GetHicon();
+            using var temporaryIcon = Icon.FromHandle(iconHandle);
+            Icon = (Icon)temporaryIcon.Clone();
+            DestroyIcon(iconHandle);
+        }
         tray = new NotifyIcon { Icon = Icon, Visible = true, Text = "CodexMinder" };
         tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); else { TopMost = true; Show(); BringToFront(); } };
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { dragging = true; dragStart = e.Location; Capture = true; } };
@@ -54,6 +63,11 @@ public sealed class Widget : Form
     {
         active = demo || IsClientRunning();
         ResizeWidget();
+        if (!dragging && settings.X is null && DateTimeOffset.Now >= nextPlacement)
+        {
+            Place();
+            nextPlacement = DateTimeOffset.Now.AddSeconds(15);
+        }
         if (!Screen.AllScreens.Any(s => s.Bounds.IntersectsWith(Bounds))) Place(reset: true);
         if (demo) { usage = new(new(80, DateTimeOffset.Now.AddHours(2)), new(88, DateTimeOffset.Now.AddDays(4))); status = "Demo data"; }
         else if (active && !refreshing && DateTimeOffset.Now >= nextRefresh)
@@ -106,8 +120,9 @@ public sealed class Widget : Form
         var taskbar = FindWindow("Shell_TrayWnd", null);
         if (taskbar != IntPtr.Zero && GetWindowRect(taskbar, out var rect))
         {
-            // Default to the left section, with room for the Start button on left-aligned taskbars.
-            Location = new(rect.Left + (int)(64 * DeviceDpi / 96f), rect.Top + Math.Max(0, (rect.Bottom - rect.Top - Height) / 2));
+            var gap = TaskbarPlacement.FindGap(taskbar, Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom), new Size((int)(144 * DeviceDpi / 96f), Height));
+            // Fall back just above the bar if it has no readable free space.
+            Location = gap ?? new Point(rect.Right - Width - 12, rect.Top - Height - 4);
         }
         else { var area = Screen.PrimaryScreen!.WorkingArea; Location = new(area.Right - Width - 12, area.Bottom - Height - 8); }
     }
@@ -116,20 +131,19 @@ public sealed class Widget : Form
     {
         base.OnPaint(e);
         var color = active && usage?.Low == true ? Color.FromArgb(213, 153, 87) : ForeColor;
-        using var logo = new Font("Segoe UI", active && settings.Stacked ? 12 : 19, FontStyle.Regular);
         using var numbers = new Font("Segoe UI", settings.Stacked ? 10 : 11, FontStyle.Regular);
         var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
-        if (!active) TextRenderer.DrawText(e.Graphics, "Ø", logo, ClientRectangle, ForeColor, flags);
+        if (!active) OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(9, 9, Width - 18, Height - 18));
         else if (settings.Stacked)
         {
             var split = Height * 45 / 100;
-            TextRenderer.DrawText(e.Graphics, "Ø", logo, new Rectangle(0, 0, Width, split), ForeColor, flags);
+            OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(0, 2, Width, split - 3));
             TextRenderer.DrawText(e.Graphics, usage?.Text ?? "— / —", numbers, new Rectangle(0, split, Width, Height - split), color, flags);
         }
         else
         {
             var split = Height;
-            TextRenderer.DrawText(e.Graphics, "Ø", logo, new Rectangle(0, 0, split, Height), ForeColor, flags);
+            OpenAiLogo.Draw(e.Graphics, blossom, new Rectangle(8, 8, split - 16, Height - 16));
             TextRenderer.DrawText(e.Graphics, usage?.Text ?? "— / —", numbers, new Rectangle(split, 0, Width - split, Height), color, flags);
         }
     }
@@ -154,8 +168,12 @@ public sealed class Widget : Form
         menu.Items.Add(startup);
         menu.Items.Add("Reset position (drag to move)", null, (_, _) => { settings.X = settings.Y = null; Save(); Place(true); });
         menu.Items.Add("Exit", null, (_, _) => Close());
-        menu.Closed += (_, _) => menu.Dispose();
+        menu.Closed += (_, _) => { if (!IsDisposed && IsHandleCreated) BeginInvoke(() => menu.Dispose()); };
+        // A non-activating overlay must explicitly foreground itself for standard
+        // popup-menu outside-click dismissal (the same rule as tray menus).
+        SetForegroundWindow(Handle);
         menu.Show(point);
+        PostMessage(Handle, 0, IntPtr.Zero, IntPtr.Zero);
     }
 
     static string Reset(Quota? q) => q is null ? "unavailable" : q.Reset is { } r ? $"{Math.Floor(q.Remaining):0}% · resets {r.LocalDateTime:ddd, MMM d, h:mm tt}" : $"{Math.Floor(q.Remaining):0}% · reset unknown";
@@ -205,12 +223,15 @@ public sealed class Widget : Form
     void Save() { Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!); File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings)); }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { lifetime.Cancel(); timer.Dispose(); tray.Dispose(); tooltip.Dispose(); }
+        if (disposing) { lifetime.Cancel(); timer.Dispose(); tray.Dispose(); tooltip.Dispose(); blossom.Dispose(); Icon?.Dispose(); }
         base.Dispose(disposing);
     }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string className, string? title);
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr icon);
     [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
     public class Settings { public int? X { get; set; } public int? Y { get; set; } public bool Stacked { get; set; } = true; public bool StartupConfigured { get; set; } }
 }
