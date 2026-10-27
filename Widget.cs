@@ -133,9 +133,7 @@ public sealed class Widget : Form
     void RenderWidget()
     {
         if (!IsHandleCreated || IsDisposed || Width <= 0 || Height <= 0) return;
-        bool light = false;
-        using (var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
-            light = key?.GetValue("SystemUsesLightTheme") is int value && value != 0;
+        bool light = SystemTheme.IsLight;
         ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : light ? Color.FromArgb(28, 28, 30) : Color.FromArgb(235, 235, 238);
         using var bitmap = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         using var graphics = Graphics.FromImage(bitmap);
@@ -165,7 +163,7 @@ public sealed class Widget : Form
 
     void ShowMenu(Point point)
     {
-        var menu = new ContextMenuStrip();
+        var menu = new ThemedMenu();
         menu.Items.Add("Codex usage · remaining").Enabled = false;
         menu.Items.Add($"5-hour: {Reset(usage?.FiveHour)}").Enabled = false;
         menu.Items.Add($"Weekly: {Reset(usage?.Weekly)}").Enabled = false;
