@@ -157,7 +157,8 @@ public sealed class Widget : Form
         else if (settings.Stacked)
         {
             var split = Height * 65 / 100;
-            OpenAiLogo.Draw(graphics, blossom, new Rectangle(0, 2, Width, split - 3), ForeColor);
+            var logoSize = (int)((split - 3) * .75f);
+            OpenAiLogo.Draw(graphics, blossom, new Rectangle((Width - logoSize) / 2, 2 + (split - 3 - logoSize) / 2, logoSize, logoSize), ForeColor);
             graphics.DrawString(text, numbers, brush, new RectangleF(0, split, Width, Height - split), format);
         }
         else
