@@ -44,9 +44,12 @@ foreach (var (remaining, expected) in new[] {
 {
     Check(new Usage(new(remaining, null), new(100, null)).Level == expected, $"Five-hour threshold at {remaining}%");
     Check(new Usage(new(100, null), new(remaining, null)).Level == expected, $"Weekly threshold at {remaining}%");
+    Check(new Quota(remaining, null).Level == expected, $"Independent percentage threshold at {remaining}%");
 }
 Check(new Usage(new(49, null), new(9, null)).Level == UsageLevel.Red, "Most urgent allowance determines color");
 Check(new Usage(null, null).Level == UsageLevel.Normal, "Unknown allowances do not trigger warning colors");
+var independent = new Usage(new(46, null), new(82, null));
+Check(independent.FiveHour!.Level == UsageLevel.Yellow && independent.Weekly!.Level == UsageLevel.Normal, "46% is yellow while 82% stays normal");
 
 static class Native
 {

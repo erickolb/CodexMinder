@@ -149,14 +149,13 @@ public sealed class Widget : Form
         // allowing the actual taskbar material beneath it to remain visible.
         graphics.Clear(Color.FromArgb(1, 0, 0, 0));
         graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        var color = (active ? usage?.Level : UsageLevel.Normal) switch
+        Color QuotaColor(Quota? quota) => quota?.Level switch
         {
             UsageLevel.Yellow => light ? Color.FromArgb(145, 110, 12) : Color.FromArgb(220, 193, 92),
             UsageLevel.Orange => Color.FromArgb(213, 153, 87),
             UsageLevel.Red => light ? Color.FromArgb(186, 45, 45) : Color.FromArgb(230, 106, 106),
             _ => ForeColor
         };
-        using var brush = new SolidBrush(color);
         using var format = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         var text = usage?.Text ?? "— / —";
         if (settings.Stacked) text = text.Replace(" / ", "/");
@@ -166,19 +165,35 @@ public sealed class Widget : Form
         // Keep even 100%/100% on one line within the square, at any display scale.
         using var numbers = new Font("Segoe UI", preferredFont.Size * (settings.Stacked ? Math.Min(1, available / measured) : 1), FontStyle.Regular);
         format.FormatFlags |= StringFormatFlags.NoWrap;
+        void DrawPercentages(RectangleF box)
+        {
+            int slash = text.IndexOf('/');
+            format.SetMeasurableCharacterRanges(new[] { new CharacterRange(0, slash), new CharacterRange(slash, 1), new CharacterRange(slash + 1, text.Length - slash - 1) });
+            var regions = graphics.MeasureCharacterRanges(text, numbers, box, format);
+            var colors = new[] { QuotaColor(usage?.FiveHour), ForeColor, QuotaColor(usage?.Weekly) };
+            for (int i = 0; i < regions.Length; i++)
+            {
+                using var region = regions[i];
+                using var brush = new SolidBrush(colors[i]);
+                var state = graphics.Save();
+                graphics.SetClip(region, System.Drawing.Drawing2D.CombineMode.Intersect);
+                graphics.DrawString(text, numbers, brush, box, format);
+                graphics.Restore(state);
+            }
+        }
         if (!active) OpenAiLogo.Draw(graphics, blossom, new Rectangle(9, 9, Width - 18, Height - 18), ForeColor);
         else if (settings.Stacked)
         {
             var split = Height * 65 / 100;
             var logoSize = (int)((split - 3) * .75f);
             OpenAiLogo.Draw(graphics, blossom, new Rectangle((Width - logoSize) / 2, 2 + (split - 3 - logoSize) / 2, logoSize, logoSize), ForeColor);
-            graphics.DrawString(text, numbers, brush, new RectangleF(0, split, Width, Height - split), format);
+            DrawPercentages(new RectangleF(0, split, Width, Height - split));
         }
         else
         {
             var split = Height;
             OpenAiLogo.Draw(graphics, blossom, new Rectangle(8, 8, split - 16, Height - 16), ForeColor);
-            graphics.DrawString(usage?.Text ?? "— / —", numbers, brush, new RectangleF(split, 0, Width - split, Height), format);
+            DrawPercentages(new RectangleF(split, 0, Width - split, Height));
         }
         LayeredSurface.Present(Handle, bitmap, Location);
     }
