@@ -8,6 +8,7 @@ namespace CodexMinder;
 public sealed class Widget : Form
 {
     readonly System.Windows.Forms.Timer timer = new() { Interval = 3000 };
+    readonly System.Windows.Forms.Timer visibilityTimer = new() { Interval = 250 };
     readonly CancellationTokenSource lifetime = new();
     readonly NotifyIcon tray;
     readonly ToolTip tooltip = new();
@@ -23,7 +24,7 @@ public sealed class Widget : Form
     DateTimeOffset nextRefresh = DateTimeOffset.MinValue;
     DateTimeOffset nextPlacement = DateTimeOffset.MinValue;
     DateTimeOffset? lastRefresh;
-    bool active, refreshing, dragging, moved;
+    bool active, refreshing, dragging, moved, suppressedForFullscreen;
     Point dragStart, dragOrigin;
 
     public Widget(bool demo, bool preview = false, bool resetPosition = false)
@@ -51,7 +52,7 @@ public sealed class Widget : Form
         tray = new NotifyIcon { Text = "CodexMinder" };
         UpdateTrayIcon();
         tray.Visible = true;
-        tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); else { TopMost = true; Show(); BringToFront(); } };
+        tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); else { ApplyFullscreenVisibility(); if (!suppressedForFullscreen) { Show(); RestoreOverlay(); } } };
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { dragging = true; moved = false; dragStart = e.Location; dragOrigin = Location; Capture = true; } };
         MouseMove += (_, _) =>
         {
@@ -63,6 +64,8 @@ public sealed class Widget : Form
         MouseUp += (_, e) => { if (dragging) { dragging = false; Capture = false; if (moved) { settings.X = Left; settings.Y = Top; Save(); } } if (e.Button == MouseButtons.Right) ShowMenu(Cursor.Position); };
         MouseDoubleClick += (_, _) => OpenChatGpt();
         timer.Tick += async (_, _) => await TickAsync();
+        visibilityTimer.Tick += (_, _) => ApplyFullscreenVisibility();
+        Shown += (_, _) => visibilityTimer.Start();
         Shown += async (_, _) => { ResizeWidget(); Place(); if (!settings.StartupConfigured && !demo) { try { if (!File.Exists(Path.Combine(AppContext.BaseDirectory, "installed.marker"))) SetStartup(true); settings.StartupConfigured = true; Save(); } catch (Exception e) { status = e.Message; } } timer.Start(); await TickAsync(); };
     }
 
@@ -79,6 +82,7 @@ public sealed class Widget : Form
             nextPlacement = DateTimeOffset.Now.AddSeconds(15);
         }
         if (!Screen.AllScreens.Any(s => s.Bounds.IntersectsWith(Bounds))) Place(reset: true);
+        ApplyFullscreenVisibility();
         RenderWidget();
         if (demo) { usage = new(new(80, DateTimeOffset.Now.AddHours(2)), new(88, DateTimeOffset.Now.AddDays(4))); status = "Demo data"; }
         else if (active && !refreshing && DateTimeOffset.Now >= nextRefresh)
@@ -103,8 +107,25 @@ public sealed class Widget : Form
 
     void RestoreOverlay()
     {
+        ApplyFullscreenVisibility();
+        if (suppressedForFullscreen) return;
         if (IsDisposed || !IsHandleCreated || !Visible) return;
         SetWindowPos(Handle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+    }
+
+    void ApplyFullscreenVisibility()
+    {
+        if (IsDisposed || !IsHandleCreated) return;
+        bool suppress = FullscreenWindow.CoversWidgetMonitor(Handle);
+        if (suppress == suppressedForFullscreen) return;
+        suppressedForFullscreen = suppress;
+        if (suppress) Hide();
+        else
+        {
+            RenderWidget();
+            Show(); // ShowWithoutActivation preserves focus in the user's app.
+            RestoreOverlay();
+        }
     }
 
     protected override void OnDeactivate(EventArgs e)
@@ -172,7 +193,7 @@ public sealed class Widget : Form
 
     void RenderWidget()
     {
-        if (!IsHandleCreated || IsDisposed || Width <= 0 || Height <= 0) return;
+        if (!IsHandleCreated || IsDisposed || suppressedForFullscreen || Width <= 0 || Height <= 0) return;
         bool light = SystemTheme.IsLight;
         ForeColor = SystemInformation.HighContrast ? SystemColors.WindowText : light ? Color.FromArgb(28, 28, 30) : Color.FromArgb(235, 235, 238);
         using var bitmap = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
@@ -314,7 +335,7 @@ public sealed class Widget : Form
     void Save() { Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!); File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings)); }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { lifetime.Cancel(); timer.Dispose(); tray.Dispose(); trayArtwork?.Dispose(); tooltip.Dispose(); blossom.Dispose(); Icon?.Dispose(); }
+        if (disposing) { lifetime.Cancel(); timer.Dispose(); visibilityTimer.Dispose(); tray.Dispose(); trayArtwork?.Dispose(); tooltip.Dispose(); blossom.Dispose(); Icon?.Dispose(); }
         base.Dispose(disposing);
     }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string className, string? title);

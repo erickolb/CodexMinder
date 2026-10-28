@@ -2,4 +2,5 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><Using Include="System.IO"/><Compile Include="../TaskbarPlacement.cs" Link="TaskbarPlacement.cs"/><Compile Include="../Usage.cs" Link="Usage.cs"/><Compile Include="../CodexClient.cs" Link="CodexClient.cs"/></ItemGroup>
   <ItemGroup><Compile Include="../TrayArtwork.cs" Link="TrayArtwork.cs"/><Compile Include="../OpenAiLogo.cs" Link="OpenAiLogo.cs"/><EmbeddedResource Include="../Assets/Blossom_Light.svg" LogicalName="CodexMinder.Assets.Blossom_Light.svg"/></ItemGroup>
+  <ItemGroup><Compile Include="../FullscreenWindow.cs" Link="FullscreenWindow.cs"/></ItemGroup>
 </Project>

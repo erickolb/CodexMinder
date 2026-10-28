@@ -21,6 +21,15 @@ if (args.Contains("--live"))
 
 Usage Parse(string json) { using var doc = JsonDocument.Parse(json); return Usage.Parse(doc.RootElement); }
 void Check(bool condition, string description) { if (!condition) throw new Exception(description); Console.WriteLine($"PASS {description}"); }
+var monitorBounds = new Rectangle(0, 0, 1920, 1080);
+Check(FullscreenWindow.IsFullscreen(monitorBounds, monitorBounds), "Borderless fullscreen covers the widget monitor");
+Check(!FullscreenWindow.IsFullscreen(new(0, 0, 1920, 1040), monitorBounds), "Maximized work area is not fullscreen");
+Check(!FullscreenWindow.IsFullscreen(new(1920, 0, 1920, 1080), monitorBounds), "Fullscreen on another monitor does not hide widget");
+Check(FullscreenWindow.IsFullscreen(new(-1920, 0, 1920, 1080), new(-1920, 0, 1920, 1080)), "Fullscreen works on negative-coordinate monitors");
+Check(FullscreenWindow.IsFullscreen(new(0, 0, 3840, 1080), monitorBounds), "Spanning fullscreen covers widget monitor");
+Check(!FullscreenWindow.IsFullscreen(monitorBounds, monitorBounds, true, true), "Captioned maximized app with auto-hidden taskbar remains a desktop window");
+Check(!FullscreenWindow.IsFullscreen(Rectangle.Empty, monitorBounds), "Missing window bounds do not suppress widget");
+Check(FullscreenWindow.IsFullscreen(new(1, 1, 1918, 1078), monitorBounds), "Single-pixel edge rounding is tolerated");
 var usage = Parse("""{"rateLimitsByLimitId":{"codex":{"primary":{"usedPercent":20,"windowDurationMins":300,"resetsAt":1793124107},"secondary":{"usedPercent":12,"windowDurationMins":10080,"resetsAt":1793650862}}}}""");
 Check(usage.Text == "80% / 88%" && !usage.Low, "Remaining percentages and window mapping");
 Check(usage.FiveHour?.Reset == DateTimeOffset.FromUnixTimeSeconds(1793124107), "Unix reset timestamp");

@@ -30,6 +30,8 @@ When ChatGPT or the Codex desktop application is running (including minimized), 
 
 The system tray icon has a small overlapping **%** badge to distinguish it from ChatGPT. The badge is green normally, yellow/orange/red for the most urgent known allowance, and mild blue only when neither allowance is known. One known allowance is enough to report a definitive color. Refresh errors retain the last known status. The widget's blossom is unchanged; only the tray icon has the badge. Tray artwork follows system light/dark theme and display scaling.
 
+The overlay hides when the foreground app covers its entire monitor, including borderless fullscreen games, and returns without taking focus when you exit fullscreen or switch away. Fullscreen on another monitor does not hide the widget. The tray icon and usage refreshes remain active while the overlay is hidden. Visibility checks run every 250 milliseconds independently of network requests.
+
 The widget refreshes usage once per minute while either desktop app is running, checks process state every three seconds, and retries failed requests after 30 seconds. Refreshes and connection errors keep the last successful percentages on screen to avoid flicker; the context menu reports when it is showing last known values and the last successful refresh time. Dashes appear only before the first successful lookup or for an allowance the account does not report.
 
 ### Taskbar placement
