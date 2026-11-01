@@ -52,6 +52,14 @@ For a portable copy, disable **Run at Windows startup**, choose **Exit**, and de
 
 ## Troubleshooting
 
+### Windows does not launch it at sign-in
+
+If the startup checkbox is enabled but Windows repeatedly skips the normal startup entry, run `scripts/repair-startup.ps1` from a local checkout. This recreates the startup entry from the interactive user's scheduled-task context, verifies a launch, and registers an optional per-user task with a 15-second sign-in delay and ordinary interactive-user privileges. This also handles cases where an agent host's registry view differs from the sign-in context. Windows may require approval to register the task. It does not request or store a password, change execution policy, or bypass Windows security settings.
+
+The task uses the normal CodexMinder startup entry as its enable/disable switch, so unchecking **Run at Windows startup** also disables its launches. An already running copy is left alone. Launch attempts and failures are recorded in `%LOCALAPPDATA%\CodexMinder\startup.log`, and Task Scheduler records trigger/run results. Successfully testing the task manually confirms its action works; the next real sign-in is still needed to verify the automatic trigger.
+
+The optional task is named `CodexMinder-YOUR-WINDOWS-SID`. To remove it, run `scripts/repair-startup.ps1 -Remove` under the same Windows account. The uninstaller removes the normal startup entry, preventing the fallback from launching anything, but does not remove this separately configured optional task.
+
 - No values: ensure Codex is signed in to the intended ChatGPT subscription account. The context menu shows the current error and last successful update. Requests normally refresh every minute.
 - Codex not found: set `CODEXMINDER_CODEX_PATH` to the installed `codex.exe` and restart the widget.
 - Poor placement: use **Reset position** to restore automatic placement, or drag to choose a fixed location. After exiting, `CodexMinder.exe --reset-position` also clears it.
